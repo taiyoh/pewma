@@ -97,8 +97,8 @@ func (p *PEWMA) alpha(v Value) Value {
 	   end if
 	*/
 	conf := p.config
-	if l := len(p.captured); l < conf.trainingPeriod {
-		return Value(1 - 1.0/(l+1))
+	if newLen := len(p.captured) + 1; newLen < conf.trainingPeriod {
+		return Value(1 - 1.0/newLen)
 	}
 	f := p.factors
 	return Value((1 - conf.betaWeight*f.pt(v)) * conf.alpha0Weight)
