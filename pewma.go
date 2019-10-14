@@ -33,7 +33,7 @@ func NewConfig(t int, alpha0 float64, beta float64) (Config, error) {
 	}
 	return Config{
 		trainingPeriod: t,
-		alpha0Weight:   adapt,
+		alpha0Weight:   alpha0,
 		betaWeight:     beta,
 	}, nil
 }
@@ -45,8 +45,10 @@ type factors struct {
 }
 
 func (f factors) zt(v Value) float64 {
-	// Xˆt+1 ← s1
-	// Zt ← Xt−Xˆt
+	if f.stdDeviation == 0.0 {
+		return 0
+	}
+	// Zt ← Xt−Xˆt/σt
 	return float64(v-f.s1) / f.stdDeviation
 }
 
@@ -56,18 +58,12 @@ func (f factors) pt(v Value) float64 {
 	return math.Exp(-(zt*zt)/2) / math.Sqrt(2*math.Pi)
 }
 
-func (f factors) detectAnomaly(threshold float64, v Value) bool {
-	return f.pt(v) <= threshold
-}
-
 func (f factors) New(alpha Value, v Value) factors {
-	/*
-			s1 ← αts1 + (1 − αt)Xt
-			s2 ← αts2 + (1 − αt)Xt^2
-		    σˆt+1 ←√s2 − s1^2
-	*/
+	// s1 ← αts1 + (1 − αt)Xt
 	s1 := alpha*f.s1 + (1-alpha)*v
+	// s2 ← αts2 + (1 − αt)Xt^2
 	s2 := alpha*f.s2 + (1-alpha)*v.square()
+	// σˆt+1 ←√s2 − s1^2
 	stdDeviation := (s2 - s1.square()).sqrt()
 	return factors{
 		s1:           s1,
@@ -126,7 +122,7 @@ func (p *PEWMA) Analyze(v Value, threshold float64) Status {
 	if len(p.captured) < conf.trainingPeriod {
 		return InTraining
 	}
-	if p.factors.detectAnomaly(threshold, v) {
+	if p.factors.pt(v) <= threshold {
 		return Outlier
 	}
 	return InOrdinary
