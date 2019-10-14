@@ -132,18 +132,21 @@ func (p *PEWMA) Analyze(v Value, threshold float64) Status {
 	return InOrdinary
 }
 
-// Add provides capture supplied value and new PEWMA object.
-func (p *PEWMA) Add(v Value) *PEWMA {
+func (p *PEWMA) pushAndPop(v Value) []Value {
 	newCaptured := append(p.captured, v)
 	if len(newCaptured) > p.config.trainingPeriod {
-		newCaptured = newCaptured[1:]
+		return newCaptured[1:]
 	}
+	return newCaptured
+}
+
+// Add provides capture supplied value and new PEWMA object.
+func (p *PEWMA) Add(v Value) *PEWMA {
 	alpha := p.alpha(v)
-	newFactors := p.factors.New(alpha, v)
 
 	return &PEWMA{
 		config:   p.config,
-		captured: newCaptured,
-		factors:  newFactors,
+		captured: p.pushAndPop(v),
+		factors:  p.factors.New(alpha, v),
 	}
 }
